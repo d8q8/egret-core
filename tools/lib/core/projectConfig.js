@@ -21,7 +21,6 @@ function init(name){
             ],
             "native": {
                 "path_ignore": [
-                    "libs"
                 ]
             }
         }
@@ -29,6 +28,9 @@ function init(name){
     }
     else{
         projectConfig = JSON.parse(content);
+    }
+    if (!projectConfig.native){
+        projectConfig.native = {};
     }
     exports.data = projectConfig;
 }
@@ -40,10 +42,9 @@ function save(){
 }
 
 function getModule(runtime){
-    var moduleList = projectConfig.modules.map(function(item){
-        return item.name;
-    })
-    moduleList.push(runtime);
+    var moduleList = projectConfig.modules.concat();
+
+    moduleList.push({"name":runtime});
     return moduleList;
 }
 

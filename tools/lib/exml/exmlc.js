@@ -465,7 +465,7 @@ var EXMLCompiler = (function () {
         for (var i = 0; i < length; i++) {
             var child = children[i];
             var prop = child.localName;
-            if (prop == "states" || child.namespace == EXMLCompiler.W) {
+            if (child.namespace == EXMLCompiler.W) {
                 continue;
             }
             if (this.isProperty(child)) {
@@ -664,7 +664,7 @@ var EXMLCompiler = (function () {
                     value = this.formatString(stringValue);
                     break;
                 default:
-                    globals.exit(2008, this.exmlPath, "string", key, this.toXMLString(node));
+                    globals.exit(2008, this.exmlPath, "string", key + ":" + type, this.toXMLString(node));
                     break;
             }
         }
@@ -829,14 +829,19 @@ var EXMLCompiler = (function () {
             for (var i = 0; i < length; i++) {
                 var item = children[i];
                 if (item.localName == "states") {
+                    item.namespace = EXMLCompiler.W;
                     states = item.children;
                     break;
                 }
             }
         }
 
-        if (states == null || states.length == 0)
+        if (states == null)
             return;
+        if (states.length == 0) {
+            globals.warn(2102, this.exmlPath, this.getPropertyStr(item));
+            return;
+        }
         length = states.length;
         for (i = 0; i < length; i++) {
             var state = states[i];
@@ -1393,13 +1398,17 @@ var CpClass = (function (_super) {
         this.sortOn(this.functionBlock, "isGet", true);
 
         var isFirst = true;
-        var index = 0;
+        if (this.moduleName) {
+            this.indent = 1;
+        } else {
+            this.indent = 0;
+        }
         var indentStr = this.getIndent();
 
         var returnStr = "";
 
         //打印文件引用区域
-        index = 0;
+        var index = 0;
         while (index < this.referenceBlock.length) {
             var importItem = this.referenceBlock[index];
             var path = this.getRelativePath(importItem);
@@ -1409,15 +1418,20 @@ var CpClass = (function (_super) {
         if (returnStr)
             returnStr += "\n";
 
+        var exportStr = "";
+
         //打印包名
-        returnStr += KeyWords.KW_MODULE + " " + this.moduleName + "{\n";
+        if (this.moduleName) {
+            returnStr += KeyWords.KW_MODULE + " " + this.moduleName + "{\n";
+            exportStr = KeyWords.KW_EXPORT + " ";
+        }
 
         //打印注释
         if (this.notation != null) {
             this.notation.indent = this.indent;
             returnStr += this.notation.toCode() + "\n";
         }
-        returnStr += indentStr + KeyWords.KW_EXPORT + " " + KeyWords.KW_CLASS + " " + this.className;
+        returnStr += indentStr + exportStr + KeyWords.KW_CLASS + " " + this.className;
 
         //打印父类
         if (this.superClass != null && this.superClass != "") {
@@ -1447,6 +1461,7 @@ var CpClass = (function (_super) {
         index = 0;
         while (this.variableBlock.length > index) {
             var variableItem = this.variableBlock[index];
+            variableItem.indent = this.indent + 1;
             returnStr += variableItem.toCode() + "\n";
             index++;
         }
@@ -1486,12 +1501,15 @@ var CpClass = (function (_super) {
         index = 0;
         while (this.functionBlock.length > index) {
             var functionItem = this.functionBlock[index];
+            functionItem.indent = this.indent + 1;
             returnStr += functionItem.toCode() + "\n";
             index++;
         }
 
-        returnStr += indentStr + "}\n}";
-
+        returnStr += indentStr + "}";
+        if (this.moduleName) {
+            returnStr += "\n}";
+        }
         return returnStr;
     };
     return CpClass;
